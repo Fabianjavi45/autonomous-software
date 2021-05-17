@@ -1,0 +1,120 @@
+'CR300 Series
+'By: Fabian J. Matos Gierbolini
+'Trajectory Algorithm CRBasic Iplementation
+
+'Declaration of System Functions
+AngleDegrees
+
+'Declaration of variables
+'Constants
+Const numOfwp = 5
+Const LOCAL_TIME_OFFSET = -6
+
+'Trajectory variables declarations
+Public WP(numOfwp*2) 'Array of trajectory, every two elements are a coodinate of the trajectory i.e longitude = WP(1)+2k while latitude = WP(2) + 2k.
+Public nextWP = 1 'variable that acts as a pointer for the waypoint that the boat's trying to arrive to.
+Public cEForce(2) 'variable to store anyca;culated force that acts upon the boat and changes it's trajectory.
+
+
+'Declaring each of the GPS's data
+Dim nmea_sentence(2) As String *100
+Public GPSArray(15)
+Public courseOverG, currLatitude, currLongitude, Speed
+
+'PWM Signal variables and constants
+Const PWM0 = 0.05 'initial power for thrusters.
+Public delTheta
+Const Gain = 0.005
+Public WPdirection, PWML, PWMR
+
+'Transmitter Communication Variables
+Public Trans = -1
+Public Test = 0
+Public flag = True
+
+DataTable(Table2,True,-1)
+  DataInterval(0,1440,Min,10)
+  Minimum(1,Trans,FP2,False,False)
+EndTable
+
+'Function Declaration for use on the software.
+Function Distance(x1,y1,x2,y2)
+  Return SQR(PWR(x2-x1,2)+ PWR(y2-y1,2))
+EndFunction
+'Declaration of variable for distance comparison.
+Public bTa, bTb
+'These variables represent the distance of the boat to the next two closest waypoints in the trajectory
+'bTa = Boat to Point A (Next Waypoint in the array) bTb = Boat to Point B (next of next waypoint in the array).
+
+
+'Main Program
+BeginProg
+  'Main Scan
+  Scan (1,Sec,0,0)
+    WP(1) = 1
+    WP(2) = 1
+    WP(3) = 2
+    WP(4) = 1.5
+    WP(5) = 3
+    WP(6) = 1.7
+    WP(7) = 4
+    WP(8) = 1.9
+    WP(9) = 5
+    WP(10) = 2
+    'Main Loop
+    'GPS Function, this will give us Longitude, Latitude, Speed and Course Over Ground. These are the measurements we need in order to make the algorithm.
+    GPS(GPSArray,ComC1_Rx,LOCAL_TIME_OFFSET*3600,100,nmea_sentence(1))
+    currLatitude = GPSArray(1)
+    currLongitude = GPSArray(3)
+    Speed = GPSArray(5)
+    courseOverG = GPSArray(7)
+
+    'Delay (0,1,Sec)
+    'Compares the magnitude of the current coordinate with the first waypoint or the next waypoint in the trajectory.
+    'This Loop will keep going until the boat reaches it's destination.
+    Do While (Round(SQR(PWR(currLatitude,2) + PWR(currLongitude,2)),2) = Round(SQR(PWR(WP((numOfwp*2)-1),2) + PWR(WP(numOfwp*2),2)),2)) AND flag
+
+      'Here we're going to compare and see which of next closest Waypoints are closest to the vessel.
+      If NOT(nextWP =(numOfwp*2)-1) Then
+        bTa = Distance(currLatitude, currLongitude, WP(nextWP), WP(nextWP+1))
+        bTb = Distance(currLatitude, currLongitude, WP(nextWP+2), WP(nextWP+3))
+        If(bTb<=bTa) Then nextWP+=2 'If Point B is closer then we change the next waypoint on to POint B instead of doing the whole trajectory to A and then to B.
+      EndIf
+
+      WPdirection = ATN2(WP(nextWP+1) - currLongitude, WP(nextWP) - currLatitude) 'this is the direction angle the boat is supposed to have in reference to the next waypoint.
+      delTheta = WPdirection - courseOverG 'Delta Theta; Difference in angle from supposed angle direction with actual angle direction.
+
+      PWML = PWM0 - Gain*delTheta 'Equation for left Thruster Power.
+      PWMR = PWM0 + Gain*delTheta  ' Equation for right Thruster Power.
+
+      PWM(PWML,4,20,mSec) 'Function to turn on the left thrusters based on the result of the previous equation.
+      PWM(PWMR,3,20,mSec) 'Function to turn on the left thrusters based on the result of the previous equation.
+      Delay (0,1,Sec)
+
+      'Check if the Boat has reached the next waypoint, if reached, move on to the next waypoint, if not, keep the next waypoint as target.
+      'The else then acts as a counteriung measure to correct the error in the trajectory of the boat by calculating an external current force upon the boat.
+      If currLongitude = WP(nextWP) AND currLatitude = WP(nextWP+1) Then
+        nextWP += 1
+      Else
+        'Not yet fully develeoped but these values would influence the equation of Power of the Thrusters.
+        cEForce(1) = currLongitude - WP(nextWP)
+        cEForce(2) = currLatitude - WP(nextWP+1)
+      EndIf
+
+      'Checks if the Kill Switch is turned on every loop
+      PulseCount(Test,1,SE1,0,1,1,0)
+
+      'Calls the Table ans stores it. This is for testing ourposes
+      CallTable(Table2)
+      If Test > 0 Then
+        flag = false
+        Trans = Test
+      EndIf
+
+      'Delay program in order for the boat to be able to move.
+      Delay (0,5,Sec)
+    Loop
+  NextScan
+EndProg
+
+
