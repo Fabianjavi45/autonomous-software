@@ -1,0 +1,78 @@
+'CR300/CR310
+'Created by Short Cut (4.4)
+
+'Declare Variables and Units
+Dim NMEASent(2) As String * 100
+Public BattV
+Public PTemp_C
+Public GPSData(15)
+
+Alias GPSData(1)=Latitude_A
+Alias GPSData(2)=Latitude_B
+Alias GPSData(3)=Longitude_A
+Alias GPSData(4)=Longitude_B
+Alias GPSData(5)=Speed
+Alias GPSData(6)=Course
+Alias GPSData(7)=MagVar
+Alias GPSData(8)=FixQual
+Alias GPSData(9)=NumSats
+Alias GPSData(10)=Altitude
+Alias GPSData(11)=PPS
+Alias GPSData(12)=SecSinceGPRMC
+Alias GPSData(13)=GPSReady
+Alias GPSData(14)=MaxClockChange
+Alias GPSData(15)=NumClockChange
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units Latitude_A=degrees
+Units Latitude_B=minutes
+Units Longitude_A=degrees
+Units Longitude_B=minutes
+Units Speed=knots
+Units Course=degrees
+Units MagVar=degrees
+Units FixQual=code
+Units NumSats=count
+Units Altitude=meters
+Units PPS=microseconds
+Units SecSinceGPRMC=seconds
+Units GPSReady=count
+Units MaxClockChange=milliseconds
+Units NumClockChange=count
+
+'Define Data Tables
+DataTable(Table1,True,-1)
+	DataInterval(0,60,Min,10)
+	Average(1,NMEASent(1),FP2,False)
+	Maximum(1,NMEASent(1),FP2,False,False)
+	Minimum(1,NMEASent(1),FP2,False,False)
+	Sample(1,NMEASent(1),STRING)
+	StdDev(1,NMEASent(1),FP2,False)
+	Totalize(1,NMEASent(1),FP2,False)
+EndTable
+
+DataTable(Table2,True,-1)
+	DataInterval(0,1440,Min,10)
+	Minimum(1,BattV,FP2,False,False)
+EndTable
+
+'Main Program
+BeginProg
+	'Main Scan
+	Scan(10,Sec,1,0)
+		'Default CR300 Datalogger Battery Voltage measurement 'BattV'
+		Battery(BattV)
+		'making sure sw12 is on'
+		SW12(1)
+		'Default CR300 Datalogger Processor Temperature measurement 'PTemp_C'
+		PanelTemp(PTemp_C,60)
+		'GPS16X-HVS GPS Receiver measurements 'Latitude_A', 'Latitude_B', 'Longitude_A', 'Longitude_B', 'Speed', 'Course',
+		'MagVar', 'FixQual', 'NumSats', 'Altitude', 'PPS', 'SecSinceGPRMC', 'GPSReady', 'MaxClockChange', and 'NumClockChange'
+		'The datalogger clock will be synchronized to GPS time.
+		GPS(GPSData(),ComC1_Rx,SE1,0*3600,500,NMEASent())
+		'Call Data Tables and Store Data
+		CallTable Table1
+		CallTable Table2
+	NextScan
+EndProg
