@@ -1,0 +1,34 @@
+'CR300/CR310
+'TEST CODE FOR TRANSMITTER COMMUNICATION'
+
+'Declare Variables and Units
+Public Trans = -1
+Public Test = 0
+Public flag = True
+
+'Define Data Tables
+DataTable(Table1,True,-1)
+  DataInterval(0,1440,Min,10)
+  Minimum(1,Test,FP2,False,False)
+EndTable
+DataTable(Table2,True,-1)
+  DataInterval(0,1440,Min,10)
+  Minimum(1,Trans,FP2,False,False)
+EndTable
+BeginProg
+  PortSet(VX2,1)
+  Scan(5,Sec,1,0)
+    Do While flag
+      'PulseCount(Test,1,SE1,0,1,1,0)
+      PeriodAvg (Test,1,1,0,10,10,1.0,0)
+      
+      CallTable(Table1)
+      If Test > 0 Then
+        flag = false 
+        Trans = Test
+      EndIf
+    Loop
+    'Call Data Tables and Store Data
+    CallTable(Table2)
+  NextScan
+EndProg
