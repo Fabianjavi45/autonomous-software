@@ -1,0 +1,20 @@
+Public i
+
+
+BeginProg
+  Scan (1,Sec,0,0)
+
+     PWM(0.05,1, 20, msec)
+      PWM(0.05,2, 20, msec)
+     PWM(0.08,1,20, msec)
+      PWM(0.08,2,20, msec)
+     Delay (0,5,sec)
+      PWM(0.05,1, 20, msec)
+      PWM(0.05,2,20,msec)
+     Delay (0,5,sec)
+
+    
+    Loop
+  NextScan
+EndProg
+
